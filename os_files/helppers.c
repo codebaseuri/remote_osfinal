@@ -16,3 +16,23 @@ void memory_copy(char *start,char *dest, int amount)
         dest[i]=start[i];
     }
 }
+int string_compare(char *str1,char *str2)
+{
+    int i=0;
+    for (int k = 0; str1[k] != '\0' && str2[k] != '\0'; k++)
+    {
+       
+        if (str1[k] != str2[k])
+        {
+            return 0;
+        }
+        
+        i=k;
+    }
+    if (str1[i+1] == '\0' && str2[i+1] == '\0')
+
+    {
+        return 1;
+    }
+    return 0;
+}

@@ -1,11 +1,12 @@
 #include "keybaord.h"
-#include "stdint.h"
-#include "helppers.h"
-#include "print_functions.h"
-#include "idt_setup.h"
+
+void snake_game();
 char capsOn;
 char capsLock;
-
+static char key_buffer[256];
+int buffer_index = 0;
+int buffer_size = 256;
+static char clear[]="clear";
 const uint32_t UNKNOWN = 0xFFFFFFFF;
 const uint32_t ESC = 0xFFFFFFFF - 1;
 const uint32_t CTRL = 0xFFFFFFFF - 2;
@@ -39,7 +40,26 @@ const uint32_t CAPS = 0xFFFFFFFF - 29;
 const uint32_t NONE = 0xFFFFFFFF - 30;
 const uint32_t ALTGR = 0xFFFFFFFF - 31;
 const uint32_t NUMLCK = 0xFFFFFFFF - 32;
+//this is snake stuff.
+// Define key codes that we'll use for snake direction
+#define KEY_UP     'w'  // w
+#define KEY_LEFT   'a'  // a
+#define KEY_DOWN   's'  // s
+#define KEY_RIGHT  'd'  // d
+#define KEY_RESTART 'r' // r
+#define KEY_QUIT    'q' // q
+int game_mode = 0; // 0 for shell, 1 for snake game
+// External variables from snake.c to update
+extern int direction;
+extern int game_over;
+extern int snake_running;
 
+// Last key pressed (updated by our keyboard handler)
+volatile char last_key_pressed = 0;
+
+// Flag to indicate if a key has been pressed
+volatile int key_pressed = 0;
+//. end of snake stuff
 
 const uint32_t lowercase[128] = {
 UNKNOWN,ESC,'1','2','3','4','5','6','7','8',
@@ -63,12 +83,54 @@ UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,
 UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,
 UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN
 };
+void clean_buffer(){
+    for (int i = 0; i < buffer_size; i++){
+        key_buffer[i] = 0;
+    }
+    buffer_index = 0;
+}
 
+//shell available commands
+void commands()
+{
+    //print_Str(key_buffer);
+    if (string_compare(key_buffer,"cls"))
+    {
+        clear_Screen();
+    }
+    else if (string_compare(key_buffer,"exit"))
+    {
+        print_Str("exiting...\n");
+        //exit(0);
+    }
+    else if (string_compare(key_buffer,"help"))
+    {
+        print_Str("commands:\n");
+        print_Str("snake\n");
+        print_Str("help\n");
+        print_Str("cls\n");
+        print_Str("exit\n");
+    }
+    else if (string_compare(key_buffer,"snake"))
+    {
+        print_Str("lets play some snake\n");
+        game_mode = 1;
+       // snake_game();
+    }
+    else
+    {
+        print_Str("command not found\n");
+    }
+    clean_buffer();
+    print_Str(">");
+    
+}
 
-void keyboardHandler(struct InterruptRegisters *regs){
+void keyboardHandler( registers_stc *regs){
     char scanCode = port_byte_in(0x60) & 0x7F; //What key is pressed
     char press = port_byte_in(0x60) & 0x80; 
-    //print_Str("niggger");
+    if (game_mode==0)
+    { 
         switch(scanCode){
         case 1:
         case 29:
@@ -103,23 +165,110 @@ void keyboardHandler(struct InterruptRegisters *regs){
             break;
         default:
             if (press == 0){
+
+                
                 if (capsOn || capsLock){
                    //print_Str(uppercase[scanCode]);
                    //print_Str('c');
                    print_char(uppercase[scanCode]);
-                }else{
+                   if (buffer_index<= buffer_size){
+                    key_buffer[buffer_index] = uppercase[scanCode];
+                    buffer_index++;
+                    if (uppercase[scanCode] == '\n'){
+                       //print_char('k');
+                        key_buffer[buffer_index-1] = '\0';    
+                        
+                        commands();
+                    }
+                   
+                }
+
+                }
+                else{
                      //print_Str(lowercase[scanCode]);
                       //print_Str('c');
                    print_char(lowercase[scanCode]);
+
+
+                   if (buffer_index<= buffer_size){
+                    key_buffer[buffer_index] = lowercase[scanCode];
+                    buffer_index++;
+                    if (lowercase[scanCode] == '\n'){
+                       //print_char('k');
+                        key_buffer[buffer_index-1] = '\0';    
+                        commands();
+                    }
+                    
                 }
             }
-            
+        }   
     }
-
-    
-   // print_Str(press);
+}
+    else 
+    {
+        print_char('s');
+        int a=1/0;
+        snake_keyboard_handler(scanCode, press);
+    }
+}
+void snake_keyboard_handler(char scanCode, char pressed) {
+    print_char('k');
+    if (pressed) {
+        char key = 0;
+        
+        // Convert scan code to ASCII using the keyboard mapping
+        if (scanCode < 128) {
+            key = lowercase[scanCode];
+        }
+        
+        // Store the key press
+        last_key_pressed = key;
+        key_pressed = 1;
+        
+        // Check for game quit key (q)
+        if (key == KEY_QUIT) {
+            // End the game and return to shell
+            snake_running = 0;
+            game_over = 1;
+            return;
+        }
+        
+        if (!game_over) {
+            // Update direction based on key press
+            // Don't allow 180-degree turns (e.g., if going right, can't immediately go left)
+            if (key == KEY_UP && direction != DIR_DOWN) {
+                direction = DIR_UP;
+            } else if (key == KEY_RIGHT && direction != DIR_LEFT) {
+                direction = DIR_RIGHT;
+            } else if (key == KEY_DOWN && direction != DIR_UP) {
+                direction = DIR_DOWN;
+            } else if (key == KEY_LEFT && direction != DIR_RIGHT) {
+                direction = DIR_LEFT;
+            }
+        } else if (key == KEY_RESTART) {
+            // Signal for game restart
+            game_over = 2; // Special value to indicate restart requested
+        }
+    }
 }
 
+
+// Restore the original keyboard handler
+
+
+// Get the last key that was pressed
+char get_last_key() {
+    return last_key_pressed;
+}
+
+// Check if a key has been pressed since last check
+int check_key_pressed() {
+    if (key_pressed) {
+        key_pressed = 0; // Reset the flag
+        return 1;
+    }
+    return 0;
+}
 
 void initKeyboard(){
     capsOn = 0;

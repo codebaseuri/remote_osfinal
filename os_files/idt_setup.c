@@ -103,6 +103,7 @@ void isr_handler(registers_stc *r)
 }
 
 void * irq_funcs[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+//extern void (irq_funcs[16])(registers_stc *) = {0};
 
 void irq_install(int irq ,void (*handler)(registers_stc *r) )
 {

@@ -12,7 +12,7 @@ void main() {
     clear_Screen();
     initialize_idt();
     initKeyboard();
-    char strr[]="welcome mortals\n";
+    char strr[]="welcome to the remote os!\n";
     print_Str(strr);
     print_Str("made by uri \n");
     print_Str(">");

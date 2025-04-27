@@ -1,14 +1,14 @@
-
+#ifndef IDT_H
+#define IDT_H
 #include <stdint.h>
 typedef struct  
 {
-    /* data */uint16_t low_offset;
+    uint16_t low_offset;
     uint16_t selector;
     uint8_t always_0;
     uint8_t flags;
     uint16_t high_offset;
-} __attribute__((packed))idt_gate;
-
+} __attribute__((packed)) idt_gate;
 
 typedef struct  // registers struct 
 {
@@ -16,11 +16,11 @@ typedef struct  // registers struct
      uint32_t ds;
 
     //registers for genral perpose
-    uint32_t edi, esi ,ebp ,esp , eax, ebx ,ecx ,edx;
+    uint32_t edi, esi, ebp, esp, eax, ebx, ecx, edx;
      
-    uint32_t interupt_number,err_Code;
+    uint32_t interupt_number, err_Code;
 
-     uint32_t eip, cs, eflags, useresp , ss;
+     uint32_t eip, cs, eflags, useresp, ss;
 } registers_stc;
 
 typedef struct {
@@ -28,8 +28,18 @@ typedef struct {
     uint32_t base;
 } __attribute__((packed)) idt_register_t;
 
+// Fixed function pointer array declaration to match implementation
+//extern void (*irq_funcs[16])(registers_stc *);
 
 void initialize_idt();
+void load_idt();
+void set_idt_gate(int n, uint32_t handler);
+void isr_handler(registers_stc *r);
+void irq_handler(registers_stc *r);
+void isr_install();
+void irq_install(int irq, void (*handler)(registers_stc *r));
+void irq_uninstall(int irq);
+
 //creating the isr functions 
 extern void isr0();
 extern void isr1();
@@ -64,7 +74,6 @@ extern void isr29();
 extern void isr30();
 extern void isr31();
 
-
 //creating the irq functions
 extern void irq0();
 extern void irq1();
@@ -82,3 +91,4 @@ extern void irq12();
 extern void irq13();
 extern void irq14();
 extern void irq15();
+#endif // IDT_H
