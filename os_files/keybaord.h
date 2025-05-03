@@ -5,7 +5,6 @@
 #include "stdint.h"
 #include "helppers.h"
 #include "print_functions.h"
-#include "snake.h"
 
 // Key constants
 extern const uint32_t UNKNOWN;

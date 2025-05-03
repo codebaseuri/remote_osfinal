@@ -1,31 +1,57 @@
 #ifndef SNAKE_H
 #define SNAKE_H
-#include "idt_setup.h"
 
-// Forward declare the InterruptRegisters struct
-//struct InterruptRegisters;
-
-// Game constants
-#define BOARD_WIDTH 40
-#define BOARD_HEIGHT 20
-#define MAX_SNAKE_LENGTH 100
+// Game board dimensions
+#define WIDTH 30
+#define HEIGHT 15  // Reduced to fit better on screen
 
 // Direction constants
-#define DIR_UP 0
-#define DIR_RIGHT 1
-#define DIR_DOWN 2
-#define DIR_LEFT 3
+#define SUP 0
+#define SRIGHT 1
+#define SDOWN 2
+#define SLEFT 3
 
-// Position structure
+// Game characters
+#define WALL_CHAR '#'
+#define SNAKE_HEAD 'O'
+#define SNAKE_BODY 'o'
+#define FOOD_CHAR '@'
+#define EMPTY_SPACE ' '
+
+// Key controls
+#define KEY_UP 'w'      // w
+#define KEY_LEFT 'a'    // a
+#define KEY_DOWN 's'    // s
+#define KEY_RIGHT 'd'   // d
+#define KEY_RESTART 'r' // r
+#define KEY_QUIT 'q'    // q
+
+// Snake structure
+typedef struct {
+    int x[100];  // X coordinates of snake segments
+    int y[100];  // Y coordinates of snake segments
+    int length;  // Current length of the snake
+    int direction;  // Current direction
+} Snake;
+
+// Food structure
 typedef struct {
     int x;
     int y;
-} SnakePos;
+} Food;
+
+// Game state variables (extern so keyboard.c can access them)
+
 
 // Function declarations
-void snake_game(void);
-//void init_snake_keyboard(void);
-//void restore_keyboard_handler(void);
-//void snake_keyboard_handler( registers_stc*regs);
+int custom_random(int max);
+void init_game();
+void move_snake();
+int check_collision();
+int check_food();
+int process_input(char ch);
+void render_game();
+void run_snake_game();
+int continue_game();
 
-#endif // SNAKE_H
+#endif /* SNAKE_H */

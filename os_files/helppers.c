@@ -36,3 +36,13 @@ int string_compare(char *str1,char *str2)
     }
     return 0;
 }
+void delay(int count) {
+    // Nested loop for better delay control
+    volatile int outer, inner;
+    for (outer = 0; outer < count; outer++) {
+        for (inner = 0; inner < 3000000; inner++) {
+
+            __asm__("nop");
+        }
+    }
+}

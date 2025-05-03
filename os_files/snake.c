@@ -1,361 +1,250 @@
-// Snake game implementation for custom OS
-// No stdlib dependency
+
+
 #include "snake.h"
-#include "print_functions.h"
-#include "helppers.h"
-
-
-// Game characters
-#define CHAR_EMPTY ' '
-#define CHAR_SNAKE 'O'
-#define CHAR_HEAD '@'
-#define CHAR_FOOD '*'
-#define CHAR_WALL '#'
-
-// Game variables
-SnakePos snake_body[MAX_SNAKE_LENGTH];
-int snake_length;
-int direction;
-SnakePos food_pos;
+// Custom random function that doesn't rely on stdlib
+unsigned int seed = 12345;
+Snake snake;
+Food food;
+char board[HEIGHT][WIDTH];
 int score;
-int game_over;
-unsigned int tick_counter;
-unsigned int seed;
-int snake_running = 0;
-// void init_snake_keyboard();
-//void restore_keyboard_handler();
-// Original keyboard handler (saved so we can restore it when game ends)
-//void (*original_keyboard_handler)(struct InterruptRegisters *regs) = 0;
-
-// Simple pseudo-random number generator (Linear Congruential Generator)
-unsigned int next_random() {
+int game_over = 0;
+int custom_random(int max) {
+    // Simple LCG (Linear Congruential Generator)
     seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    return seed;
-}
-
-// Set a random seed based on current tick count
-void init_random(unsigned int initial_seed) {
-    seed = initial_seed;
-}
-
-// Get a random position within the board boundaries
-SnakePos get_random_position() {
-    SnakePos pos;
-    pos.x = (next_random() % (BOARD_WIDTH - 2)) + 1;
-    pos.y = (next_random() % (BOARD_HEIGHT - 2)) + 1;
-    return pos;
-}
-
-// Check if two positions are the same
-int positions_equal(SnakePos a, SnakePos b) {
-    return (a.x == b.x && a.y == b.y);
-}
-
-// Check if position is part of the snake (except the head)
-int is_position_on_snake(SnakePos pos) {
-    for (int i = 1; i < snake_length; i++) {
-        if (positions_equal(pos, snake_body[i])) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-// Generate a new food position
-void generate_food() {
-    do {
-        food_pos = get_random_position();
-    } while (is_position_on_snake(food_pos));
+    return (seed % max);
 }
 
 // Initialize the game
 void init_game() {
+    score = 0;
+    game_over = 1;
     // Initialize snake in the middle of the board
-    snake_length = 3;
-    SnakePos center;
-    center.x = BOARD_WIDTH / 2;
-    center.y = BOARD_HEIGHT / 2;
+    snake.length = 1;
+    snake.x[0] = WIDTH / 2;
+    snake.y[0] = HEIGHT / 2;
+    snake.direction = SRIGHT;
+
+    // Place initial food
+    food.x = custom_random(WIDTH - 2) + 1;
+    food.y = custom_random(HEIGHT - 2) + 1;
+}
+
+// Move the snake based on current direction
+void move_snake() {
+    int i;
     
-    // Place snake body parts
-    for (int i = 0; i < snake_length; i++) {
-        snake_body[i].x = center.x - i;
-        snake_body[i].y = center.y;
+    // Move the snake: first shift all segments
+    for (i = snake.length - 1; i > 0; i--) {
+        snake.x[i] = snake.x[i-1];
+        snake.y[i] = snake.y[i-1];
     }
     
-    // Set initial direction
-    direction = DIR_RIGHT;
-    
-    // Initialize score
-    score = 0;
-    
-    // Set game_over flag
-    game_over = 0;
-    
-    // Set tick counter
-    tick_counter = 0;
-    
-    // Initialize random seed
-    init_random(42);
-    
-    // Generate first food
-    generate_food();
+    // Move the head according to direction
+    switch (snake.direction) {
+        case SUP:
+            snake.y[0]--;
+            break;
+        case SRIGHT:
+            snake.x[0]++;
+            break;
+        case SDOWN:
+            snake.y[0]++;
+            break;
+        case SLEFT:
+            snake.x[0]--;
+            break;
+    }
 }
 
-// Draw a character at the specified position
-void draw_char_at_position(SnakePos pos, char ch) {
-    // Calculate screen offset
-    int offset = get_offset(pos.x, pos.y);
-    set_char_at(ch, offset);
+// Check for collisions
+int check_collision() {
+    int i;
+    
+    // Check for collision with walls
+    if (snake.x[0] <= 0 || snake.x[0] >= WIDTH - 1 || 
+        snake.y[0] <= 0 || snake.y[0] >= HEIGHT - 1) {
+        return 1;
+    }
+    
+    // Check for collision with self
+    for (i = 1; i < snake.length; i++) {
+        if (snake.x[0] == snake.x[i] && snake.y[0] == snake.y[i]) {
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+int continue_game(){return game_over;}
+// Check if snake ate food
+int check_food() {
+    if (snake.x[0] == food.x && snake.y[0] == food.y) {
+        // Increase score and length
+        score += 10;
+        snake.length++;
+        
+        // Ensure we're not exceeding the snake's array size
+        if (snake.length >= 100) {
+            char win_msg[] = "You win! The snake can't grow anymore!";
+            print_Str(win_msg);
+            return 0;
+        }
+        
+        // Generate new food (ensuring it's not on the snake)
+        int on_snake;
+        do {
+            food.x = custom_random(WIDTH - 2) + 1;
+            food.y = custom_random(HEIGHT - 2) + 1;
+            
+            on_snake = 0;
+            for (int i = 0; i < snake.length; i++) {
+                if (food.x == snake.x[i] && food.y == snake.y[i]) {
+                    on_snake = 1;
+                    break;
+                }
+            }
+        } while (on_snake);
+        
+        return 1;
+    }
+    return 0;
 }
 
-// Draw the game board
-void draw_board() {
-    // Clear screen
+// Check for keyboard input and update snake direction
+int process_input(char ch ) {
+    int moved = 0;
+    
+    // W key - Up
+    if (ch== 'w') {
+        if (snake.direction != SDOWN) {
+            snake.direction = SUP;
+            move_snake();
+            moved = 1;
+        }
+    }
+    // A key - Left
+    else if (ch== 'a') {
+        if (snake.direction != SRIGHT) {
+            snake.direction = SLEFT;
+            move_snake();
+            moved = 1;
+        }
+    }
+    // S key - Down
+    else if (ch== 's') {
+        if (snake.direction != SUP) {
+            snake.direction = SDOWN;
+            move_snake();
+            moved = 1;
+        }
+    }
+    // D key - Right
+    else if (ch== 'd') {
+        if (snake.direction != SLEFT) {
+            snake.direction = SRIGHT;
+            move_snake();
+            moved = 1;
+        }
+    }
+    // Q key - Quit
+    else if (ch== 'q') {
+
+        clear_Screen();
+        print_Str("you quit the game!\n");
+        print_Str("returning to shell...\n");
+        game_over = 0;
+        return 0;
+    }
+    
+    return moved;
+}
+
+// Render the game board using your OS's print functions
+void render_game() {
+    int i, j;
+    char buffer[2];  // Buffer for single character printing
+    buffer[1] = 0;   // Null terminator
+    
+    // Clear the board array
+    for (i = 0; i < HEIGHT; i++) {
+        for (j = 0; j < WIDTH; j++) {
+            if (i == 0 || i == HEIGHT - 1 || j == 0 || j == WIDTH - 1)
+                board[i][j] = WALL_CHAR;  // Wall
+            else
+                board[i][j] = EMPTY_SPACE;  // Empty space
+        }
+    }
+    
+    // Place food
+    board[food.y][food.x] = FOOD_CHAR;
+    
+    // Place snake
+    board[snake.y[0]][snake.x[0]] = SNAKE_HEAD;  // Head
+    for (i = 1; i < snake.length; i++) {
+        board[snake.y[i]][snake.x[i]] = SNAKE_BODY;  // Body
+    }
+    
+    // Clear screen using your OS function
     clear_Screen();
     
-    // Draw top and bottom walls
-    for (int x = 0; x < BOARD_WIDTH; x++) {
-        SnakePos wall_pos;
-        wall_pos.x = x;
-        
-        // Top wall
-        wall_pos.y = 0;
-        draw_char_at_position(wall_pos, CHAR_WALL);
-        
-        // Bottom wall
-        wall_pos.y = BOARD_HEIGHT - 1;
-        draw_char_at_position(wall_pos, CHAR_WALL);
+    // Print board using your OS function
+    for (i = 0; i < HEIGHT; i++) {
+        for (j = 0; j < WIDTH; j++) {
+            buffer[0] = board[i][j];
+            print_Str(buffer);
+        }
+        print_Str("\n");
     }
     
-    // Draw left and right walls
-    for (int y = 0; y < BOARD_HEIGHT; y++) {
-        SnakePos wall_pos;
-        wall_pos.y = y;
-        
-        // Left wall
-        wall_pos.x = 0;
-        draw_char_at_position(wall_pos, CHAR_WALL);
-        
-        // Right wall
-        wall_pos.x = BOARD_WIDTH - 1;
-        draw_char_at_position(wall_pos, CHAR_WALL);
-    }
+    // Print score
+    char score_msg[50];
+    char score_str[10];
     
-    // Draw snake
-    for (int i = 0; i < snake_length; i++) {
-        char ch = (i == 0) ? CHAR_HEAD : CHAR_SNAKE;
-        draw_char_at_position(snake_body[i], ch);
-    }
+    // Convert score to string (simple implementation)
+    int temp = score;
+    int idx = 0;
     
-    // Draw food
-    draw_char_at_position(food_pos, CHAR_FOOD);
-    
-    // Draw score
-    SnakePos score_pos;
-    score_pos.x = BOARD_WIDTH + 2;
-    score_pos.y = 1;
-    draw_char_at_position(score_pos, 'S');
-    
-    score_pos.x++;
-    draw_char_at_position(score_pos, 'c');
-    
-    score_pos.x++;
-    draw_char_at_position(score_pos, 'o');
-    
-    score_pos.x++;
-    draw_char_at_position(score_pos, 'r');
-    
-    score_pos.x++;
-    draw_char_at_position(score_pos, 'e');
-    
-    score_pos.x++;
-    draw_char_at_position(score_pos, ':');
-    
-    score_pos.x++;
-    draw_char_at_position(score_pos, ' ');
-    
-    // Convert score to characters and display
-    int temp_score = score;
-    if (temp_score == 0) {
-        score_pos.x++;
-        draw_char_at_position(score_pos, '0');
+    // Handle 0 score specially
+    if (temp == 0) {
+        score_str[idx++] = '0';
     } else {
-        int digits[10];
-        int num_digits = 0;
-        
-        while (temp_score > 0) {
-            digits[num_digits++] = temp_score % 10;
-            temp_score /= 10;
+        // Convert digits in reverse order
+        while (temp > 0) {
+            score_str[idx++] = '0' + (temp % 10);
+            temp /= 10;
         }
-        
-        for (int i = num_digits - 1; i >= 0; i--) {
-            score_pos.x++;
-            draw_char_at_position(score_pos, '0' + digits[i]);
-        }
+    }
+    score_str[idx] = '\0';
+    
+    // Reverse the score string
+    for (i = 0; i < idx / 2; i++) {
+        char temp = score_str[i];
+        score_str[i] = score_str[idx - i - 1];
+        score_str[idx - i - 1] = temp;
     }
     
-    // If game over, show message
-    if (game_over) {
-        SnakePos game_over_pos;
-        game_over_pos.x = BOARD_WIDTH / 2 - 4;
-        game_over_pos.y = BOARD_HEIGHT / 2;
-        
-        char* message = "GAME OVER";
-        for (int i = 0; message[i] != 0; i++) {
-            draw_char_at_position(game_over_pos, message[i]);
-            game_over_pos.x++;
-        }
-        
-        game_over_pos.x = BOARD_WIDTH / 2 - 8;
-        game_over_pos.y = BOARD_HEIGHT / 2 + 1;
-        
-        char* restart_msg = "Press R to restart";
-        for (int i = 0; restart_msg[i] != 0; i++) {
-            draw_char_at_position(game_over_pos, restart_msg[i]);
-            game_over_pos.x++;
-        }
-    }
+    // Create and print score message
+    print_Str("\nScore: ");
+    print_Str(score_str);
+    print_Str("\n");
+    print_Str("Controls: W (up), A (left), S (down), D (right), Q (quit)\n");
+    print_Str("Movement: Snake only moves when you press a key\n");
 }
 
-// Process keyboard input to change direction
-void process_input() {
-    // Direction is directly updated by the keyboard handler
-    // We just need to increment the tick counter for game timing
-    tick_counter++;
-    
-    // Note: Our keyboard handler in snake_keyboard.c updates the
-    // direction variable directly when arrow keys are pressed
-}
-
-// Update the game state
-void update_game() {
-    if (game_over) {
-        // Check if restart was requested (game_over == 2 means restart)
-        if (game_over == 2) {
-            init_game(); // Restart the game
-        }
-        return;
-    }
-   
-    // Calculate new head position based on current direction
-    SnakePos new_head = snake_body[0];
-    
-    switch (direction) {
-        case DIR_UP:
-            new_head.y--;
-            break;
-        case DIR_RIGHT:
-            new_head.x++;
-            break;
-        case DIR_DOWN:
-            new_head.y++;
-            break;
-        case DIR_LEFT:
-            new_head.x--;
-            break;
-    }
-    
-    // Check for collisions with walls
-    if (new_head.x <= 0 || new_head.x >= BOARD_WIDTH - 1 || 
-        new_head.y <= 0 || new_head.y >= BOARD_HEIGHT - 1) {
-        game_over = 1;
-        return;
-    }
-    
-    // Check for collisions with self
-    if (is_position_on_snake(new_head)) {
-        game_over = 1;
-        return;
-    }
-    
-    // Check for food collision
-    int ate_food = positions_equal(new_head, food_pos);
-    
-    // Move the snake by updating positions
-    // First, shift all segments one position down
-    for (int i = snake_length - 1; i > 0; i--) {
-        snake_body[i] = snake_body[i - 1];
-    }
-    
-    // Set the new head position
-    snake_body[0] = new_head;
-    
-    // If the snake ate food, increase its length and generate new food
-    if (ate_food) {
-        score++;
-        
-        if (snake_length < MAX_SNAKE_LENGTH) {
-            snake_length++;
-        }
-        
-        generate_food();
-    }
-}
-
-// Simple delay function using a loop
-void delay(unsigned int count) {
-    for (unsigned int i = 0; i < count; i++) {
-        // Do nothing, just waste time
-        for (unsigned int j = 0; j < 1000; j++) {
-            // Inner loop to waste more time
-        }
-    }
-}
-
-// Main game loop
+// Game loop function - to be called from your main kernel
 void run_snake_game() {
-    // Set snake_running flag
-    snake_running = 1;
-    
-    // Initialize the game
+    // Initialize game
     init_game();
     
-    // Main game loop
-    while (snake_running) {
-        
-        // Draw the current game state
-        draw_board();
-        
-        // Process input
-        //process_input();
-       // int a=1/0;
-        // Update game state
-        //update_game();
-        
-        // Add a delay to control game speed
-        //delay(200000);
-    }
+    // Initial render
+    render_game();
     
-    // Game has ended, clean up
-    // Restore original keyboard handler
-   // restore_keyboard_handler();
-    
-    // Clear screen and print returning to shell message
-    clear_Screen();
-    print_Str("Snake game ended. Returning to shell.\n");
-    print_Str(">");
-}
 
-// Function to start the snake game (to be called from shell)
-void snake_game() {
-    // Clear the screen
+    // Game over message
     clear_Screen();
+    print_Str("Welcome to the snake game!\n");
+    print_Str("Press 'q' to quit the game.\n");
+    print_Str("Press 'w' (up), 'a' (left), 's' (down), 'd' (right) to move.\n");
+    print_Str("Press any key to start the game.\n");
     
-    // Display welcome message
-    print_Str("Welcome to Snake Game!\n");
-    print_Str("Use WASD keys to control the snake\n");
-    print_Str("* Eat food to grow and increase score\n");
-    print_Str("* Avoid hitting walls and yourself\n");
-    print_Str("* Press R to restart when game over\n");
-    print_Str("* Press Q to quit back to shell\n");
-    print_Str("\nPress any key to start...\n");
-    
-    // Wait for a key press
-    delay(200000);
-    
-    // Save the original keyboard handler and initialize snake keyboard
-    
-    // Start the game
-   //int a=1/0;
-    run_snake_game();
 }

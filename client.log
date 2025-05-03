@@ -3505,3 +3505,21 @@
 2025-03-26 20:31:08,065 - RemoteClient - INFO - Connecting to mouse control server at 10.100.102.12:5001...
 2025-03-26 20:31:08,066 - RemoteClient - INFO - Mouse authentication successful
 2025-04-20 22:51:15,340 - AuthClient - INFO - Auth client initialized for server 10.100.102.12:5002
+2025-05-03 13:51:11,985 - AuthClient - INFO - Auth client initialized for server 10.100.102.12:5002
+2025-05-03 13:55:32,892 - AuthClient - INFO - Auth client initialized for server 10.100.102.12:5002
+2025-05-03 13:55:41,397 - AuthClient - INFO - Logging in user: u
+2025-05-03 13:55:41,438 - AuthClient - INFO - Login successful for u
+2025-05-03 13:56:36,258 - RemoteClient - INFO - Remote control client initialized for server 10.100.102.12
+2025-05-03 13:56:36,263 - RemoteClient - INFO - Connecting to mouse control server at 10.100.102.12:5001...
+2025-05-03 13:56:36,265 - RemoteClient - INFO - Mouse authentication successful
+2025-05-03 13:56:37,275 - RemoteClient - INFO - Connecting to screen sharing server at 10.100.102.12:5000...
+2025-05-03 13:56:37,276 - RemoteClient - INFO - Connected to screen sharing server
+2025-05-03 13:56:37,281 - RemoteClient - INFO - Screen authentication successful
+2025-05-03 13:56:37,335 - RemoteClient - INFO - Server monitor dimensions: 1920x1080, aspect ratio: 1.78
+2025-05-03 13:56:37,335 - RemoteClient - INFO - Status message: TYPING MODE - Press Tab to enter command mode
+2025-05-03 13:56:54,810 - RemoteClient - ERROR - Error sending command: [WinError 10053] An established connection was aborted by the software in your host machine
+2025-05-03 13:56:55,293 - RemoteClient - INFO - Connecting to mouse control server at 10.100.102.12:5001...
+2025-05-03 13:56:55,295 - RemoteClient - INFO - Mouse authentication successful
+2025-05-03 13:56:57,908 - RemoteClient - INFO - Stopping remote control client
+2025-05-03 13:56:57,909 - RemoteClient - ERROR - Screen sharing connection error: [WinError 10053] An established connection was aborted by the software in your host machine
+2025-05-03 13:56:57,913 - RemoteClient - INFO - Remote control client stopped
