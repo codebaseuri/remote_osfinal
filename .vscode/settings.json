@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "idt_setup.h": "c",
+    "print_functions.h": "c"
+  }
+}
